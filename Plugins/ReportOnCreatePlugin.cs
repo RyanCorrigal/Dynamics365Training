@@ -36,7 +36,7 @@ namespace Plugins
 
                 try
                 {
-                    // Plug-in business logic goes here.
+                    // create the fetchxml to retrieve the observations
                     var fetchXmlObservations = @"
                         <fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='false'>
                           <entity name='br_obervation'>
@@ -47,31 +47,39 @@ namespace Plugins
                           </entity>
                         </fetch>";
 
-                    // retrieve active quotes using fetchXml
+                    // retrieve active observations using fetchXml passed into the organization service
                     var observations = service.RetrieveMultiple(new FetchExpression(fetchXmlObservations));
 
                     foreach (var observation in observations.Entities)
                     {
                         var reportObservation = new Entity("br_reportobservation");
+
                         reportObservation["br_observation"] = observation.GetAttributeValue<string>("br_name");
+                        
                         // alternate way of doing the above line
                         //reportObservation["br_observation"] = observation["name"];
 
-                        // we create the new entity reference to the report using the entity name and the record id from the context
+                        // we create the new entity reference to the report using the entity logical name and the record id from the context
                         reportObservation["br_report"] = new EntityReference(context.PrimaryEntityName, context.PrimaryEntityId);
+                        
+                        // alternate way of doing the above name
                         // reportObservation["br_report"] = new EntityReference("br_report", context.PrimaryEntityId);
 
+                        // give the report observation record a name
                         reportObservation["br_name"] = observation.GetAttributeValue<string>("br_name");
 
+                        // use the organization service to createthe reportobservation entity we just defined
                         var reportObservationGuid = service.Create(reportObservation);
 
+                        // log our creation of the record to the tracing service
                         tracingService.Trace("New br_reportobservation created with id: " + reportObservationGuid);
                     }
                 }
 
                 catch (FaultException<OrganizationServiceFault> ex)
                 {
-                    throw new InvalidPluginExecutionException("An error occurred in FollowUpPlugin.", ex);
+                    // this message will show to the user in a pop up
+                    throw new InvalidPluginExecutionException("An error occurred in ReportOnCreatePlugin.", ex);
                 }
 
                 catch (Exception ex)
